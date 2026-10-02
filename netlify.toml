@@ -5,3 +5,4 @@
   from = "/gan/*"
   to = "/.netlify/functions/go?k=:splat"
   status = 200
+  force = true
