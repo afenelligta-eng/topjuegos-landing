@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Marcar FTD">
+<title>Marcar FTD — TopJuegos</title>
+<style>
+  :root{
+    --bg: #0b0f0d;
+    --bg-panel: #121712;
+    --gold: #c9a84c;
+    --gold-bright: #e8c869;
+    --green: #1f7a4d;
+    --green-bright: #2fae6d;
+    --text: #f2ede1;
+    --text-dim: #8c9088;
+    --red: #b5453f;
+    --border: #24291f;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(circle at 50% 0%, #131a13 0%, var(--bg) 55%);
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--text);
+    overscroll-behavior: none;
+  }
+  .wrap{
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding: max(28px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom));
+  }
+  .brand{
+    text-align:center;
+    margin-bottom: 34px;
+  }
+  .chip{
+    width:46px; height:46px;
+    margin: 0 auto 14px;
+    border-radius:50%;
+    background: conic-gradient(var(--gold) 0turn, var(--green) 0.25turn, var(--gold) 0.5turn, var(--green) 0.75turn, var(--gold) 1turn);
+    position:relative;
+    box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--border);
+  }
+  .chip::after{
+    content:"";
+    position:absolute; inset:8px;
+    border-radius:50%;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+  }
+  .brand h1{
+    font-size: 13px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--gold-bright);
+    margin: 0;
+  }
+  .brand p{
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  form{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap: 18px;
+  }
+
+  label{
+    display:block;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .field input{
+    width:100%;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 16px;
+    font-size: 20px;
+    color: var(--text);
+    font-family: inherit;
+    outline:none;
+    transition: border-color .15s ease;
+  }
+  #codigo{
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .field input:focus{
+    border-color: var(--gold);
+  }
+  .field input::placeholder{
+    color: #4d5248;
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+
+  .quick-amounts{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+    flex-wrap: wrap;
+  }
+  .quick-amounts button{
+    flex: 1 1 auto;
+    min-width: 70px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 9px 6px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+  }
+  .quick-amounts button.active{
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .toggle-field{ margin-top: 2px; }
+  .toggle-label{
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 12px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+  .toggle-label span:first-child{
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .toggle-label input[type="checkbox"]{
+    position:absolute;
+    opacity:0;
+    width:0; height:0;
+  }
+  .toggle-track{
+    position:relative;
+    width: 44px; height: 26px;
+    border-radius: 999px;
+    background: #2a2f24;
+    border: 1px solid var(--border);
+    flex-shrink:0;
+    transition: background .15s ease;
+  }
+  .toggle-thumb{
+    position:absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: transform .15s ease, background .15s ease;
+  }
+  .toggle-label input:checked + .toggle-track{
+    background: rgba(201,168,76,0.25);
+    border-color: var(--gold);
+  }
+  .toggle-label input:checked + .toggle-track .toggle-thumb{
+    transform: translateX(18px);
+    background: var(--gold-bright);
+  }
+
+  .toggle-hint{
+    font-size: 11px;
+    color: #5c6155;
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  .spacer{flex:1;}
+
+  .submit-btn{
+    width:100%;
+    border:none;
+    border-radius: 16px;
+    padding: 19px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-family: inherit;
+    color: #08120a;
+    background: linear-gradient(180deg, var(--green-bright), var(--green));
+    box-shadow: 0 10px 24px -8px rgba(47,174,109,0.5);
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .submit-btn.dryrun-active{
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    box-shadow: 0 10px 24px -8px rgba(201,168,76,0.5);
+    color: #1a1508;
+  }
+  .submit-btn:active{
+    transform: scale(0.98);
+  }
+  .submit-btn:disabled{
+    opacity: 0.5;
+  }
+
+  .status{
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    display:none;
+  }
+  .status.show{ display:block; }
+  .status.ok{
+    background: rgba(47,174,109,0.12);
+    border: 1px solid rgba(47,174,109,0.4);
+    color: var(--green-bright);
+  }
+  .status.err{
+    background: rgba(181,69,63,0.12);
+    border: 1px solid rgba(181,69,63,0.4);
+    color: #e08a85;
+  }
+  .status.loading{
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold-bright);
+  }
+
+  .config-note{
+    margin-top: 20px;
+    font-size: 11px;
+    color: #4d5248;
+    text-align:center;
+    line-height:1.5;
+  }
+  .config-note button{
+    background:none; border:none; color:#5c6155; text-decoration:underline;
+    font-size:11px; font-family:inherit; padding:0;
+  }
+
+  dialog{
+    border:none; border-radius:16px; padding:20px;
+    background: var(--bg-panel); color: var(--text);
+    width: min(320px, 86vw);
+  }
+  dialog::backdrop{ background: rgba(0,0,0,0.6); }
+  dialog label{margin-top:14px;}
+  dialog input{
+    width:100%; padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:#0e130e; color:var(--text); font-size:15px; font-family:inherit;
+  }
+  dialog .dialog-actions{
+    display:flex; gap:10px; margin-top:20px;
+  }
+  dialog .dialog-actions button{
+    flex:1; padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:transparent; color:var(--text); font-family:inherit; font-weight:600;
+  }
+  dialog .dialog-actions button.save{
+    background: var(--gold); color:#1a1508; border:none;
+  }
+
+  .verify-link{
+    text-align:center;
+    margin-top: 14px;
+  }
+  .verify-link button{
+    background:none; border:none; color:var(--text-dim);
+    text-decoration:underline; font-size:12px; font-family:inherit; padding:6px;
+  }
+
+  .verify-result{
+    margin-top: 10px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.7;
+    display: none;
+  }
+  .verify-result.show{ display:block; }
+  .verify-result .fila{
+    display:flex; justify-content:space-between; gap:10px;
+  }
+  .verify-result .fila span:first-child{ color: var(--text-dim); }
+  .verify-result .fila span:last-child{ font-weight:700; text-align:right; }
+  .verify-result .si{ color: var(--green-bright); }
+  .verify-result .no{ color: var(--red); }
+
+  /* ===== Menu de pestanas ===== */
+  .tabs{
+    display:flex; gap:6px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 22px;
+  }
+  .tabs button{
+    flex:1; padding: 11px 6px;
+    border:none; border-radius: 10px;
+    background: transparent; color: var(--text-dim);
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .tabs button.active{
+    background: rgba(201,168,76,0.14);
+    color: var(--gold-bright);
+  }
+
+  .panel{ flex:1; display:flex; flex-direction:column; }
+  .panel[hidden]{ display:none; }
+
+  /* ===== Listas ===== */
+  .list-controls{ display:flex; flex-direction:column; gap:14px; }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chips button{
+    flex:1 1 auto; min-width:64px;
+    background: transparent; border:1px solid var(--border);
+    color: var(--text-dim); padding:11px 6px; border-radius:10px;
+    font-size:13px; font-family:inherit; font-weight:600;
+  }
+  .chips button.active{
+    border-color: var(--gold); color: var(--gold-bright);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .list-summary{
+    margin-top:18px; padding:12px 14px;
+    border-radius:12px;
+    background: rgba(201,168,76,0.07);
+    border:1px solid rgba(201,168,76,0.25);
+    font-size:12.5px; color: var(--gold-bright); line-height:1.6;
+    display:none;
+  }
+  .list-summary.show{ display:block; }
+
+  .cliente{
+    background: var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:13px 15px;
+    margin-top:10px;
+  }
+  .cliente-top{
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  }
+  .cliente-cod{
+    font-size:16px; font-weight:700; letter-spacing:0.06em; color:var(--text);
+  }
+  .cliente-ltv{ font-size:15px; font-weight:800; color:var(--green-bright); }
+  .cliente-meta{
+    margin-top:6px; font-size:11.5px; color:var(--text-dim); line-height:1.5;
+  }
+  .cliente-acciones{ display:flex; gap:8px; margin-top:11px; }
+  .cliente-acciones a, .cliente-acciones button{
+    flex:1; text-align:center; text-decoration:none;
+    padding:9px 6px; border-radius:10px;
+    font-size:12.5px; font-family:inherit; font-weight:700;
+    border:1px solid var(--border); background:transparent; color:var(--text-dim);
+  }
+  .cliente-acciones a.wa{
+    background: rgba(47,174,109,0.14);
+    border-color: rgba(47,174,109,0.4);
+    color: var(--green-bright);
+  }
+  .cliente-acciones a.disabled{ opacity:0.4; pointer-events:none; }
+
+  .list-empty{
+    margin-top:20px; text-align:center; font-size:13px; color:var(--text-dim); line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="chip"></div>
+    <h1>TopJuegos</h1>
+    <p>Marcar FTD o depósito adicional</p>
+  </div>
+
+  <div class="tabs">
+    <button type="button" id="tabCarga" class="active">Cargar depósito</button>
+    <button type="button" id="tabListas">Listas de clientes</button>
+  </div>
+
+  <div id="panelCarga" class="panel">
+  <form id="ftdForm">
+    <div class="field">
+      <label for="codigo">Código del cliente</label>
+      <input id="codigo" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" placeholder="Ej: A3F9K2" required>
+      <div id="codigoDetectMsg" class="toggle-hint"></div>
+    </div>
+
+    <div class="field">
+      <label for="monto">Monto depositado (ARS)</label>
+      <input id="monto" type="number" inputmode="numeric" placeholder="0" required>
+      <div class="quick-amounts" id="quickAmounts">
+        <button type="button" data-val="5000">$5.000</button>
+        <button type="button" data-val="10000">$10.000</button>
+        <button type="button" data-val="20000">$20.000</button>
+        <button type="button" data-val="50000">$50.000</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="telefono">Teléfono de WhatsApp (opcional, muy recomendado)</label>
+      <input id="telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej: 5493774474437">
+      <div class="toggle-hint">Como aparece en WhatsApp, con código de país. Es la señal más fuerte que acepta Meta para emparejar la conversión. Se guarda una sola vez por cliente: en los depósitos siguientes ya no hace falta volver a escribirlo.</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div id="status" class="status"></div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Marcar depósito (envía a Meta)</button>
+
+    <div class="verify-link">
+      <button type="button" id="verifyBtn">¿No estás seguro si se envió? Verificar código</button>
+    </div>
+    <div id="verifyResult" class="verify-result"></div>
+
+    <div class="verify-link">
+      <button type="button" id="openTestMode">🧪 Modo prueba (probar sin enviar a Meta)</button>
+    </div>
+
+    <div class="verify-link">
+      <button type="button" id="openWaConfig">📱 Cambiar número de WhatsApp de la landing</button>
+    </div>
+
+    <div class="verify-link">
+      <button type="button" id="openRedirectsConfig">🔗 Gestionar links de redirect</button>
+    </div>
+
+    <div class="config-note">
+      <span id="configLabel">Sin configurar</span> ·
+      <button type="button" id="openConfig">Configurar conexión</button>
+    </div>
+  </form>
+  </div>
+
+  <div id="panelListas" class="panel" hidden>
+    <div class="list-controls">
+      <div>
+        <label>Tipo de lista</label>
+        <div class="chips" id="tipoLista">
+          <button type="button" data-tipo="inactivos" class="active">Sin depositar</button>
+          <button type="button" data-tipo="highrollers">High rollers</button>
+        </div>
+      </div>
+
+      <div id="bloqueDias">
+        <label>Días sin depositar (o más)</label>
+        <div class="chips" id="diasChips">
+          <button type="button" data-dias="7" class="active">7 días</button>
+          <button type="button" data-dias="14">14 días</button>
+          <button type="button" data-dias="30">30 días</button>
+          <button type="button" data-dias="60">60 días</button>
+        </div>
+      </div>
+
+      <div id="bloquePromedio" hidden>
+        <label for="minPromedio">Depósito promedio mínimo (ARS)</label>
+        <input id="minPromedio" type="number" inputmode="numeric" value="8000">
+        <div class="toggle-hint">Se calcula como LTV total ÷ cantidad de depósitos. Ej: 3 depósitos que suman $30.000 dan un promedio de $10.000.</div>
+      </div>
+
+      <button type="button" class="submit-btn" id="generarLista">Generar lista</button>
+    </div>
+
+    <div id="listSummary" class="list-summary"></div>
+    <div id="listResult"></div>
+  </div>
+</div>
+
+<dialog id="configDialog">
+  <label for="scriptUrl" style="margin-top:0;">URL del Apps Script (exec)</label>
+  <input id="scriptUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec">
+  <label for="secretKey">Clave secreta (APP_SECRET)</label>
+  <input id="secretKey" type="text" placeholder="La misma que pusiste en el CONFIG del script">
+  <div class="dialog-actions">
+    <button type="button" id="cancelConfig">Cancelar</button>
+    <button type="button" class="save" id="saveConfig">Guardar</button>
+  </div>
+</dialog>
+
+<!-- ===== Modo prueba: totalmente separado del formulario principal ===== -->
+<!-- Usa sus propios campos y SIEMPRE manda dryRun=1. Nunca puede, ni por -->
+<!-- accidente, enviar un FTD o depósito real a Meta. -->
+<dialog id="testDialog">
+  <label for="testCodigo" style="margin-top:0;">Código del cliente</label>
+  <input id="testCodigo" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" placeholder="Ej: A3F9K2">
+  <label for="testMonto">Monto (ARS)</label>
+  <input id="testMonto" type="number" inputmode="numeric" placeholder="0">
+  <div class="toggle-hint">Esto SIEMPRE corre en modo prueba: nunca envía nada a Meta ni afecta al formulario de arriba. El sistema decide solo si el código sería FTD o depósito adicional.</div>
+  <div id="testDialogMsg" class="toggle-hint"></div>
+  <div class="dialog-actions">
+    <button type="button" id="cancelTest">Cerrar</button>
+    <button type="button" class="save" id="runTest">Probar</button>
+  </div>
+</dialog>
+
+<!-- ===== Cambiar número de WhatsApp de la landing (apartado separado) ===== -->
+<dialog id="waDialog">
+  <label for="waNumberInput" style="margin-top:0;">Número de WhatsApp de la landing</label>
+  <input id="waNumberInput" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej: 5493774474437">
+  <div class="toggle-hint">Con código de país, tal cual aparece en el link de WhatsApp (mismo formato que usás para el teléfono de un cliente). Es el número al que van a escribir TODOS los que entren a la landing — el cambio aplica de inmediato.</div>
+  <div id="waDialogMsg" class="toggle-hint"></div>
+  <div class="dialog-actions">
+    <button type="button" id="cancelWa">Cancelar</button>
+    <button type="button" class="save" id="saveWa">Guardar</button>
+  </div>
+</dialog>
+
+<!-- ===== Gestionar links de redirect (apartado separado) ===== -->
+<dialog id="redirectsDialog">
+  <label style="margin-top:0;">Links actuales</label>
+  <div id="redirectsList" class="verify-result show" style="margin-bottom:16px;">Cargando…</div>
+
+  <label for="redirectClave">Clave (lo que va después de /gan/)</label>
+  <input id="redirectClave" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Ej: gan3">
+  <label for="redirectUrl">URL destino</label>
+  <input id="redirectUrl" type="text" inputmode="url" autocomplete="off" placeholder="https://...">
+  <div class="toggle-hint">El link queda en tudominio.netlify.app/gan/<clave>. Si ya existe esa clave, se sobrescribe el destino — así se arregla un link caído sin cambiar la URL que ya está puesta en el anuncio.</div>
+  <div id="redirectsDialogMsg" class="toggle-hint"></div>
+  <div class="dialog-actions">
+    <button type="button" id="cancelRedirects">Cerrar</button>
+    <button type="button" class="save" id="saveRedirect">Guardar link</button>
+  </div>
+</dialog>
+
+<script>
+  let SCRIPT_URL = '';
+  let SECRET = '';
+
+  function loadConfig(){
+    try{
+      SCRIPT_URL = localStorage.getItem('ftd_script_url') || '';
+      SECRET = localStorage.getItem('ftd_secret') || '';
+    }catch(e){}
+    updateConfigLabel();
+  }
+  function saveConfigToSession(url, secret){
+    SCRIPT_URL = url; SECRET = secret;
+    try{
+      localStorage.setItem('ftd_script_url', url);
+      localStorage.setItem('ftd_secret', secret);
+    }catch(e){}
+    updateConfigLabel();
+  }
+  function updateConfigLabel(){
+    document.getElementById('configLabel').textContent =
+      SCRIPT_URL ? 'Conectado ✓' : 'Sin configurar';
+  }
+
+  document.getElementById('openConfig').addEventListener('click', () => {
+    document.getElementById('scriptUrl').value = SCRIPT_URL;
+    document.getElementById('secretKey').value = SECRET;
+    document.getElementById('configDialog').showModal();
+  });
+  document.getElementById('cancelConfig').addEventListener('click', () => {
+    document.getElementById('configDialog').close();
+  });
+  document.getElementById('saveConfig').addEventListener('click', () => {
+    const url = document.getElementById('scriptUrl').value.trim();
+    const secret = document.getElementById('secretKey').value.trim();
+    saveConfigToSession(url, secret);
+    document.getElementById('configDialog').close();
+  });
+
+  document.getElementById('quickAmounts').addEventListener('click', (e) => {
+    if(e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById('monto').value = e.target.dataset.val;
+  });
+
+  const statusEl = document.getElementById('status');
+  function showStatus(kind, msg){
+    statusEl.className = 'status show ' + kind;
+    statusEl.textContent = msg;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+
+  // El formulario principal SIEMPRE envía en serio (nunca dryRun) y SIEMPRE usa
+  // la acción "marcarDeposito": ya no hay ningún toggle que elegir a mano — el
+  // servidor decide solo si es FTD o depósito adicional, leyendo el estado real
+  // del código en el mismo momento en que guarda el resultado.
+  document.getElementById('ftdForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión (botón de abajo).');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+
+    const codigo = document.getElementById('codigo').value.trim().toUpperCase();
+    const monto = document.getElementById('monto').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const btn = document.getElementById('submitBtn');
+
+    btn.disabled = true;
+    showStatus('loading', 'Enviando a Meta...');
+
+    const url = `${SCRIPT_URL}?action=marcarDeposito&codigo=${encodeURIComponent(codigo)}&monto=${encodeURIComponent(monto)}&telefono=${encodeURIComponent(telefono)}&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.success){
+        showStatus('ok', '✅ ' + data.message);
+        document.getElementById('ftdForm').reset();
+        document.querySelectorAll('.quick-amounts button').forEach(b => b.classList.remove('active'));
+        ultimoCodigoDetectado = '';
+        codigoDetectMsg.textContent = '';
+      } else {
+        showStatus('err', '⚠️ ' + (data.message || 'Error desconocido'));
+      }
+    }catch(err){
+      showStatus('err', '⚠️ No se pudo conectar. Revisá tu conexión o la URL configurada.');
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // ===== Vista previa informativa: FTD o depósito adicional =====
+  // Apenas se completa el código, se consulta el estado (misma consulta de solo
+  // lectura que usa "Verificar código") solo para MOSTRAR qué va a pasar. Es
+  // puramente informativo: no hay ningún toggle que dependa de esto, así que
+  // aunque esta vista previa no encuentre el código o se equivoque, el envío
+  // real (marcarDeposito) igual decide bien, porque lee el Sheet en el momento
+  // de guardar. Nunca envía nada a Meta ni modifica el Sheet.
+  const codigoInput = document.getElementById('codigo');
+  const codigoDetectMsg = document.getElementById('codigoDetectMsg');
+  const telefonoInput = document.getElementById('telefono');
+  let detectTimer = null;
+  let ultimoCodigoDetectado = '';
+
+  async function detectarTipoDeposito(){
+    const codigo = codigoInput.value.trim().toUpperCase();
+    if(!SCRIPT_URL || !SECRET) return;   // sin conexión configurada todavía: no intenta nada
+    if(codigo.length < 5){ codigoDetectMsg.textContent = ''; return; }
+    if(codigo === ultimoCodigoDetectado) return;   // ya se consultó este código, el mensaje ya está mostrado
+
+    codigoDetectMsg.style.color = '';
+    codigoDetectMsg.textContent = '🔍 Verificando código…';
+
+    const url = `${SCRIPT_URL}?action=consultarCodigo&codigo=${encodeURIComponent(codigo)}&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // Si mientras esperábamos la respuesta el código ya cambió, se descarta.
+      if(codigoInput.value.trim().toUpperCase() !== codigo) return;
+
+      if(!data.success){
+        codigoDetectMsg.textContent = '❓ Código no encontrado todavía en el Sheet.';
+        return;
+      }
+
+      ultimoCodigoDetectado = codigo;
+      codigoDetectMsg.textContent = data.tieneFTD
+        ? '🔁 Cliente existente — se va a registrar como depósito adicional.'
+        : '🆕 Cliente nuevo — se va a registrar como FTD.';
+
+      if(data.telefono && !telefonoInput.value.trim()){
+        telefonoInput.value = data.telefono;
+      }
+    }catch(err){
+      codigoDetectMsg.textContent = '';   // falla silenciosa: no interrumpe la carga manual
+    }
+  }
+
+  codigoInput.addEventListener('input', () => {
+    clearTimeout(detectTimer);
+    detectTimer = setTimeout(detectarTipoDeposito, 500);
+  });
+  codigoInput.addEventListener('blur', () => {
+    clearTimeout(detectTimer);
+    detectarTipoDeposito();
+  });
+
+  // ===== Verificar código =====
+  // De solo lectura: nunca envía nada a Meta ni modifica el Sheet. Sirve para
+  // los casos de "no se pudo conectar" — antes de reintentar un envío, se puede
+  // chequear en 2 toques si en realidad ya había quedado registrado.
+  const verifyResultEl = document.getElementById('verifyResult');
+
+  document.getElementById('verifyBtn').addEventListener('click', async () => {
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión (botón de abajo).');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+    const codigo = document.getElementById('codigo').value.trim().toUpperCase();
+    if(!codigo){
+      verifyResultEl.className = 'verify-result show';
+      verifyResultEl.innerHTML = '<div class="fila"><span>Escribí un código arriba primero.</span></div>';
+      return;
+    }
+
+    verifyResultEl.className = 'verify-result show';
+    verifyResultEl.innerHTML = '<div class="fila"><span>Consultando…</span></div>';
+
+    const url = `${SCRIPT_URL}?action=consultarCodigo&codigo=${encodeURIComponent(codigo)}&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      if(!data.success){
+        verifyResultEl.innerHTML = '<div class="fila"><span>⚠️ ' + (data.message || 'No encontrado') + '</span></div>';
+        return;
+      }
+      verifyResultEl.innerHTML = `
+        <div class="fila"><span>Código</span><span>${data.codigo}</span></div>
+        <div class="fila"><span>FTD registrado</span><span class="${data.tieneFTD ? 'si' : 'no'}">${data.tieneFTD ? 'Sí — $' + data.montoFTD : 'No'}</span></div>
+        <div class="fila"><span>LTV total</span><span>$${data.ltvTotal}</span></div>
+        <div class="fila"><span>Cant. depósitos</span><span>${data.cantDepositos}</span></div>
+        <div class="fila"><span>Promedio</span><span>$${data.promedio}</span></div>
+        <div class="fila"><span>Teléfono guardado</span><span class="${data.telefono ? 'si' : 'no'}">${data.telefono || 'No'}</span></div>
+        <div class="fila"><span>Último depósito</span><span>${data.ultimoDeposito}</span></div>
+      `;
+    }catch(err){
+      verifyResultEl.innerHTML = '<div class="fila"><span>⚠️ No se pudo conectar para verificar. Probá de nuevo en unos segundos.</span></div>';
+    }
+  });
+
+  // ===== Pestañas =====
+  const tabCarga   = document.getElementById('tabCarga');
+  const tabListas  = document.getElementById('tabListas');
+  const panelCarga = document.getElementById('panelCarga');
+  const panelListas= document.getElementById('panelListas');
+
+  function mostrarPanel(cual){
+    const esCarga = cual === 'carga';
+    panelCarga.hidden  = !esCarga;
+    panelListas.hidden =  esCarga;
+    tabCarga.classList.toggle('active', esCarga);
+    tabListas.classList.toggle('active', !esCarga);
+  }
+  tabCarga.addEventListener('click', () => mostrarPanel('carga'));
+  tabListas.addEventListener('click', () => mostrarPanel('listas'));
+
+  // ===== Selectores de la lista =====
+  let tipoActual = 'inactivos';
+  let diasActual = 7;
+
+  document.getElementById('tipoLista').addEventListener('click', (e) => {
+    if(e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('#tipoLista button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    tipoActual = e.target.dataset.tipo;
+    document.getElementById('bloqueDias').hidden      = (tipoActual !== 'inactivos');
+    document.getElementById('bloquePromedio').hidden  = (tipoActual !== 'highrollers');
+  });
+
+  document.getElementById('diasChips').addEventListener('click', (e) => {
+    if(e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('#diasChips button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    diasActual = parseInt(e.target.dataset.dias, 10);
+  });
+
+  // ===== Generar lista =====
+  // Es una consulta de solo lectura: no envía nada a Meta ni modifica el Sheet.
+  const listSummary = document.getElementById('listSummary');
+  const listResult  = document.getElementById('listResult');
+
+  function esc(t){
+    return (t == null ? '' : String(t))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function plata(n){ return '$' + (Number(n)||0).toLocaleString('es-AR'); }
+
+  document.getElementById('generarLista').addEventListener('click', async () => {
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión.');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+
+    const btn = document.getElementById('generarLista');
+    const minPromedio = document.getElementById('minPromedio').value.trim() || '8000';
+
+    btn.disabled = true;
+    listSummary.className = 'list-summary show';
+    listSummary.textContent = 'Buscando clientes…';
+    listResult.innerHTML = '';
+
+    const url = `${SCRIPT_URL}?action=listaClientes&tipo=${encodeURIComponent(tipoActual)}`
+              + `&dias=${encodeURIComponent(diasActual)}&minPromedio=${encodeURIComponent(minPromedio)}`
+              + `&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if(!data.success){
+        listSummary.textContent = '⚠️ ' + (data.message || 'No se pudo generar la lista');
+        btn.disabled = false;
+        return;
+      }
+
+      listSummary.innerHTML =
+        `<b>${data.total}</b> cliente${data.total === 1 ? '' : 's'} · ${esc(data.criterio)}<br>`
+        + `LTV acumulado de esta lista: <b>${plata(data.ltvLista)}</b>`
+        + (data.total > data.mostrados ? `<br>Mostrando los primeros ${data.mostrados}.` : '');
+
+      if(data.clientes.length === 0){
+        listResult.innerHTML = '<div class="list-empty">No hay clientes que cumplan este criterio.<br>Probá con menos días o un promedio más bajo.</div>';
+        btn.disabled = false;
+        return;
+      }
+
+      listResult.innerHTML = data.clientes.map(c => {
+        const tieneTel = !!c.telefono;
+        const waHref = tieneTel ? 'https://wa.me/' + esc(c.telefono) : '#';
+        return `
+          <div class="cliente">
+            <div class="cliente-top">
+              <span class="cliente-cod">${esc(c.codigo)}</span>
+              <span class="cliente-ltv">${plata(c.ltv)}</span>
+            </div>
+            <div class="cliente-meta">
+              ${c.cant} depósito${c.cant === 1 ? '' : 's'} · promedio ${plata(c.promedio)}<br>
+              Último: hace ${c.dias} día${c.dias === 1 ? '' : 's'} (${esc(c.ultimo)})
+            </div>
+            <div class="cliente-acciones">
+              <a class="wa ${tieneTel ? '' : 'disabled'}" href="${waHref}" target="_blank" rel="noopener">
+                ${tieneTel ? 'Escribir por WhatsApp' : 'Sin teléfono cargado'}
+              </a>
+              <button type="button" class="usar-codigo" data-codigo="${esc(c.codigo)}" data-tel="${esc(c.telefono)}">Cargar depósito</button>
+            </div>
+          </div>`;
+      }).join('');
+
+    }catch(err){
+      listSummary.textContent = '⚠️ No se pudo conectar. Probá de nuevo en unos segundos.';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // Atajo: desde la lista, saltar al formulario con el código y el teléfono ya cargados.
+  listResult.addEventListener('click', (e) => {
+    const btn = e.target.closest('.usar-codigo');
+    if(!btn) return;
+    const codigoDesdeLista = btn.dataset.codigo || '';
+    document.getElementById('codigo').value   = codigoDesdeLista;
+    document.getElementById('telefono').value = btn.dataset.tel || '';
+    document.getElementById('monto').value    = '';
+    ultimoCodigoDetectado = codigoDesdeLista.trim().toUpperCase();  // evita una consulta redundante
+    codigoDetectMsg.textContent = '🔁 Cargado desde la lista — depósito adicional.';
+    mostrarPanel('carga');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ===== Modo prueba (apartado separado) =====
+  // Usa sus propios campos, totalmente aislados del formulario principal, y
+  // manda dryRun=1 siempre — sin excepción — sin importar cuántas veces se toque.
+  document.getElementById('openTestMode').addEventListener('click', () => {
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión (botón de abajo).');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+    document.getElementById('testCodigo').value = '';
+    document.getElementById('testMonto').value = '';
+    const msg = document.getElementById('testDialogMsg');
+    msg.style.color = '';
+    msg.textContent = '';
+    document.getElementById('testDialog').showModal();
+  });
+  document.getElementById('cancelTest').addEventListener('click', () => {
+    document.getElementById('testDialog').close();
+  });
+  document.getElementById('runTest').addEventListener('click', async () => {
+    const codigo = document.getElementById('testCodigo').value.trim().toUpperCase();
+    const monto = document.getElementById('testMonto').value.trim();
+    const msg = document.getElementById('testDialogMsg');
+
+    if(!codigo){
+      msg.style.color = '#e08a85';
+      msg.textContent = 'Escribí un código primero.';
+      return;
+    }
+
+    const btn = document.getElementById('runTest');
+    btn.disabled = true;
+    msg.style.color = 'var(--gold-bright)';
+    msg.textContent = 'Probando…';
+
+    const url = `${SCRIPT_URL}?action=marcarDeposito&codigo=${encodeURIComponent(codigo)}&monto=${encodeURIComponent(monto)}&secret=${encodeURIComponent(SECRET)}&dryRun=1`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      msg.style.color = data.success ? 'var(--green-bright)' : '#e08a85';
+      msg.textContent = (data.success ? '✅ ' : '⚠️ ') + (data.message || 'Sin respuesta');
+    }catch(err){
+      msg.style.color = '#e08a85';
+      msg.textContent = '⚠️ No se pudo conectar.';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // ===== Cambiar número de WhatsApp de la landing (apartado separado) =====
+  document.getElementById('openWaConfig').addEventListener('click', async () => {
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión (botón de abajo).');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+    const input = document.getElementById('waNumberInput');
+    const msg = document.getElementById('waDialogMsg');
+    msg.style.color = '';
+    msg.textContent = '';
+    input.value = 'Cargando…';
+    document.getElementById('waDialog').showModal();
+
+    try{
+      const res = await fetch(`${SCRIPT_URL}?action=getWhatsapp`);
+      const data = await res.json();
+      input.value = (data && data.success && data.numero) ? data.numero : '';
+      if(!data || !data.success){
+        msg.style.color = '#e08a85';
+        msg.textContent = 'No se pudo cargar el número actual. Podés escribir el nuevo igual.';
+      }
+    }catch(err){
+      input.value = '';
+      msg.style.color = '#e08a85';
+      msg.textContent = 'No se pudo conectar para leer el número actual. Podés escribir el nuevo igual.';
+    }
+  });
+  document.getElementById('cancelWa').addEventListener('click', () => {
+    document.getElementById('waDialog').close();
+  });
+  document.getElementById('saveWa').addEventListener('click', async () => {
+    const numero = document.getElementById('waNumberInput').value.trim();
+    const msg = document.getElementById('waDialogMsg');
+
+    if(!numero){
+      msg.style.color = '#e08a85';
+      msg.textContent = 'Escribí un número primero.';
+      return;
+    }
+
+    const btn = document.getElementById('saveWa');
+    btn.disabled = true;
+    msg.style.color = 'var(--gold-bright)';
+    msg.textContent = 'Guardando…';
+
+    const url = `${SCRIPT_URL}?action=actualizarWhatsapp&numero=${encodeURIComponent(numero)}&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.success){
+        document.getElementById('waDialog').close();
+        showStatus('ok', '✅ Número de WhatsApp actualizado: ' + data.numero);
+      } else {
+        msg.style.color = '#e08a85';
+        msg.textContent = '⚠️ ' + (data.message || 'No se pudo actualizar.');
+      }
+    }catch(err){
+      msg.style.color = '#e08a85';
+      msg.textContent = '⚠️ No se pudo conectar. Probá de nuevo.';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // ===== Gestionar links de redirect (apartado separado) =====
+  async function cargarListaRedirects(){
+    const list = document.getElementById('redirectsList');
+    list.textContent = 'Cargando…';
+    try{
+      const res = await fetch(`${SCRIPT_URL}?action=listarRedirects&secret=${encodeURIComponent(SECRET)}`);
+      const data = await res.json();
+      if(!data || !data.success){
+        list.textContent = 'No se pudo cargar la lista.';
+        return;
+      }
+      const claves = Object.keys(data.redirects || {});
+      if(claves.length === 0){
+        list.textContent = 'Todavía no hay links creados.';
+        return;
+      }
+      list.innerHTML = claves.map(k => `
+        <div class="fila" style="align-items:center; margin-bottom:8px;">
+          <span>/gan/${k}<br><span style="color:var(--text-dim); font-size:11px;">${data.redirects[k]}</span></span>
+          <button type="button" class="borrarRedirect" data-clave="${k}" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:6px 10px;font-size:12px;">Borrar</button>
+        </div>
+      `).join('');
+      list.querySelectorAll('.borrarRedirect').forEach(btn => {
+        btn.addEventListener('click', () => eliminarRedirectClick(btn.dataset.clave));
+      });
+    }catch(err){
+      list.textContent = 'No se pudo conectar.';
+    }
+  }
+
+  async function eliminarRedirectClick(clave){
+    if(!confirm(`¿Borrar /gan/${clave}?`)) return;
+    const url = `${SCRIPT_URL}?action=eliminarRedirect&clave=${encodeURIComponent(clave)}&secret=${encodeURIComponent(SECRET)}`;
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.success){ cargarListaRedirects(); }
+      else{ alert(data.message || 'No se pudo borrar.'); }
+    }catch(err){
+      alert('No se pudo conectar.');
+    }
+  }
+
+  document.getElementById('openRedirectsConfig').addEventListener('click', () => {
+    if(!SCRIPT_URL || !SECRET){
+      showStatus('err', 'Primero configurá la conexión (botón de abajo).');
+      document.getElementById('configDialog').showModal();
+      return;
+    }
+    document.getElementById('redirectClave').value = '';
+    document.getElementById('redirectUrl').value = '';
+    document.getElementById('redirectsDialogMsg').textContent = '';
+    document.getElementById('redirectsDialog').showModal();
+    cargarListaRedirects();
+  });
+  document.getElementById('cancelRedirects').addEventListener('click', () => {
+    document.getElementById('redirectsDialog').close();
+  });
+  document.getElementById('saveRedirect').addEventListener('click', async () => {
+    const clave = document.getElementById('redirectClave').value.trim();
+    const destino = document.getElementById('redirectUrl').value.trim();
+    const msg = document.getElementById('redirectsDialogMsg');
+
+    if(!clave || !destino){
+      msg.style.color = '#e08a85';
+      msg.textContent = 'Completá la clave y la URL.';
+      return;
+    }
+
+    const btn = document.getElementById('saveRedirect');
+    btn.disabled = true;
+    msg.style.color = 'var(--gold-bright)';
+    msg.textContent = 'Guardando…';
+
+    const url = `${SCRIPT_URL}?action=guardarRedirect&clave=${encodeURIComponent(clave)}&url=${encodeURIComponent(destino)}&secret=${encodeURIComponent(SECRET)}`;
+
+    try{
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.success){
+        msg.style.color = 'var(--green-bright)';
+        msg.textContent = '✅ Guardado.';
+        document.getElementById('redirectClave').value = '';
+        document.getElementById('redirectUrl').value = '';
+        cargarListaRedirects();
+      } else {
+        msg.style.color = '#e08a85';
+        msg.textContent = '⚠️ ' + (data.message || 'No se pudo guardar.');
+      }
+    }catch(err){
+      msg.style.color = '#e08a85';
+      msg.textContent = '⚠️ No se pudo conectar.';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  loadConfig();
+</script>
+</body>
+</html>
