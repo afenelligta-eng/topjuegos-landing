@@ -1,8 +1,24 @@
 [functions]
   directory = "functions"
 
+# Links de anuncios: /gan/<clave> -> función que redirige conservando fbclid/UTM
 [[redirects]]
   from = "/gan/*"
   to = "/.netlify/functions/go?k=:splat"
   status = 200
   force = true
+
+# Seguridad básica en todas las páginas
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+# Imágenes con nombre versionado: caché de 1 año (cambiá el nombre si cambiás la imagen)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
