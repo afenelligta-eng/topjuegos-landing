@@ -540,6 +540,39 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 fbq('init', '1796454481385051');
 fbq('track', 'PageView');
 </script>
+<script>
+/* Pixel dinámico: si en la PWA (Ajustes → Meta) cambiás el Pixel ID, la landing empieza a medir
+   también con el nuevo en el navegador, sin tocar código. El pixel de arriba queda como base.
+   Todo va en try/catch: si algo falla, la landing funciona igual que antes. */
+(function () {
+  try {
+    var BASE = '1796454481385051', KEY = 'tj_px';
+    var API_PX = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
+    var valido = function (v) { return /^\d{10,20}$/.test(String(v || '')); };
+    var agregar = function (id) {
+      id = String(id);
+      if (!valido(id) || id === BASE || window.__tjPx === id || typeof fbq !== 'function') return;
+      window.__tjPx = id;
+      fbq('init', id);
+      fbq('trackSingle', id, 'PageView');
+    };
+    var guardado = null;
+    try { guardado = localStorage.getItem(KEY); } catch (e) {}
+    if (guardado) agregar(guardado);
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
+    fetch(API_PX + '?action=getPixel', ctl ? { signal: ctl.signal } : {})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        clearTimeout(t);
+        if (!d || !d.success || !valido(d.pixelId)) return;
+        try { localStorage.setItem(KEY, String(d.pixelId)); } catch (e) {}
+        agregar(d.pixelId);
+      })
+      .catch(function () {});
+  } catch (e) {}
+})();
+</script>
 <noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=1796454481385051&ev=PageView&noscript=1"
 /></noscript>
