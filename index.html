@@ -527,7 +527,7 @@ footer p+p{margin-top:6px}
 })();
 </script>
 
-<!-- Meta Pixel Code -->
+<!-- Meta Pixel Code (dinámico: el Pixel ID se cambia desde la PWA, Ajustes -> Meta) -->
 <script>
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -537,28 +537,24 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '1796454481385051');
-fbq('track', 'PageView');
-</script>
-<script>
-/* Pixel dinámico: si en la PWA (Ajustes → Meta) cambiás el Pixel ID, la landing empieza a medir
-   también con el nuevo en el navegador, sin tocar código. El pixel de arriba queda como base.
-   Todo va en try/catch: si algo falla, la landing funciona igual que antes. */
 (function () {
+  /* El pixel vigente lo guarda el Apps Script (lo que pongas en la PWA). Se recuerda en el
+     navegador para arrancar al instante; FALLBACK solo se usa si nunca se pudo consultar.
+     No hace falta tocar este archivo para cambiar de pixel. */
+  var FALLBACK = '28556437477360814', KEY = 'tj_px';
+  var API_PX = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
+  var valido = function (v) { return /^\d{10,20}$/.test(String(v || '')); };
+  var activo = null;
+  function iniciar(id) {
+    if (activo || !valido(id)) return;
+    activo = String(id);
+    try { fbq('init', activo); fbq('track', 'PageView'); } catch (e) {}
+  }
+  var guardado = null;
+  try { guardado = localStorage.getItem(KEY); } catch (e) {}
+  if (valido(guardado)) iniciar(guardado);
+  else setTimeout(function () { iniciar(FALLBACK); }, 2500);   // primera visita y Apps Script lento
   try {
-    var BASE = '1796454481385051', KEY = 'tj_px';
-    var API_PX = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
-    var valido = function (v) { return /^\d{10,20}$/.test(String(v || '')); };
-    var agregar = function (id) {
-      id = String(id);
-      if (!valido(id) || id === BASE || window.__tjPx === id || typeof fbq !== 'function') return;
-      window.__tjPx = id;
-      fbq('init', id);
-      fbq('trackSingle', id, 'PageView');
-    };
-    var guardado = null;
-    try { guardado = localStorage.getItem(KEY); } catch (e) {}
-    if (guardado) agregar(guardado);
     var ctl = ('AbortController' in window) ? new AbortController() : null;
     var t = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
     fetch(API_PX + '?action=getPixel', ctl ? { signal: ctl.signal } : {})
@@ -566,16 +562,17 @@ fbq('track', 'PageView');
       .then(function (d) {
         clearTimeout(t);
         if (!d || !d.success || !valido(d.pixelId)) return;
-        try { localStorage.setItem(KEY, String(d.pixelId)); } catch (e) {}
-        agregar(d.pixelId);
+        var nuevo = String(d.pixelId);
+        try { localStorage.setItem(KEY, nuevo); } catch (e) {}
+        if (!activo) iniciar(nuevo);
+        else if (activo !== nuevo) {                      // cambiaste el pixel y este visitante traía el viejo
+          try { fbq('init', nuevo); fbq('trackSingle', nuevo, 'PageView'); activo = nuevo; } catch (e) {}
+        }
       })
       .catch(function () {});
   } catch (e) {}
 })();
 </script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=1796454481385051&ev=PageView&noscript=1"
-/></noscript>
 <!-- End Meta Pixel Code -->
 </head>
 <body>
