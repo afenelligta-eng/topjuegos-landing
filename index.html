@@ -153,6 +153,71 @@ footer p+p{margin-top:6px}
 </style>
 
 <!-- ============================================================
+     CONFIGURACIÓN EN VIVO (Pixel ID + número de WhatsApp)
+     Se cambian desde la PWA (Ajustes) y llegan solos a esta página: NO hay que editar este archivo.
+     Una sola consulta sirve a los dos. Camino normal: la función de Netlify (rápida, con caché de
+     borde). Si fallara, se consulta el Apps Script directo. Si todo falla, cada parte usa su respaldo.
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+  var CFG_URL = '/.netlify/functions/config';
+  var API = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
+  var subs = [], cfg = null, done = false;
+
+  function getJSON(url, ms) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var to = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+    return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function (r) {
+      clearTimeout(to);
+      return r.json();
+    }, function (e) { clearTimeout(to); throw e; });
+  }
+  function valid(d) { // solo pasa lo que tiene el formato esperado
+    if (!d || d.success !== true) return null;
+    var o = {};
+    if (/^\d{10,20}$/.test(String(d.pixelId))) o.pixelId = String(d.pixelId);
+    if (/^549\d{10}$/.test(String(d.numero))) o.numero = String(d.numero);
+    return (o.pixelId || o.numero) ? o : null;
+  }
+  function merge(a, b) {
+    a = a || {}; b = b || {};
+    var o = { pixelId: a.pixelId || b.pixelId, numero: a.numero || b.numero };
+    return (o.pixelId || o.numero) ? o : null;
+  }
+  function nul() { return null; }
+  function finish(c) {
+    if (done) return;
+    done = true; cfg = c;
+    var s = subs; subs = [];
+    for (var i = 0; i < s.length; i++) { try { s[i](cfg); } catch (e) {} }
+  }
+  function directo() { // respaldo: Apps Script sin pasar por Netlify
+    return getJSON(API + '?action=getConfig', 3500).then(valid, nul).then(function (c) {
+      if (c && c.pixelId && c.numero) return c;
+      return Promise.all([ // Apps Script sin "getConfig" (versión vieja): endpoints separados
+        getJSON(API + '?action=getPixel', 3500).catch(nul),
+        getJSON(API + '?action=getWhatsapp', 3500).catch(nul)
+      ]).then(function (r) {
+        return merge(c, valid({ success: true, pixelId: r[0] && r[0].pixelId, numero: r[1] && r[1].numero }));
+      });
+    });
+  }
+
+  window.TJCFG = { // quien llame ready() recibe la config (o null si nada respondió), ya sea ahora o cuando llegue
+    ready: function (cb) { if (done) { try { cb(cfg); } catch (e) {} } else subs.push(cb); }
+  };
+
+  try {
+    getJSON(CFG_URL, 2500).then(valid, nul).then(function (c) {
+      if (c && c.pixelId && c.numero) return c;
+      return directo().then(function (d) { return merge(c, d); }, function () { return c; });
+    }).then(finish, function () { finish(null); });
+  } catch (e) { finish(null); }
+})();
+</script>
+
+<!-- ============================================================
      LÓGICA PRINCIPAL (va en el <head> a propósito):
      así el botón funciona desde el primer instante, sin esperar a que
      se descargue el resto de la página.
@@ -161,10 +226,11 @@ footer p+p{margin-top:6px}
 (function () {
   'use strict';
 
-  /* ===== CONFIGURACIÓN — lo único que se toca ===== */
-  // ⚠️ NÚMERO DE WHATSAPP VIGENTE (formato 549 + código de área + número, 13 dígitos).
-  // Cambiá SOLO esta línea cuando cambie el número. Tiene que coincidir con el
-  // que cargás en la PWA ("Cambiar número de WhatsApp").
+  /* ===== CONFIGURACIÓN =====
+     El número de WhatsApp (y el Pixel ID) se cambian desde la PWA → Ajustes y llegan solos a
+     esta página en menos de 1 minuto: NO hace falta editar este archivo.
+     WA_DEFAULT es solo el ÚLTIMO RECURSO: se usa si, en una primera visita, ni la función de
+     Netlify ni el Apps Script respondieran. Mientras responda cualquiera de los dos, no se usa. */
   var WA_DEFAULT = '5493774469542';
   var API = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
 
@@ -220,8 +286,8 @@ footer p+p{margin-top:6px}
         .catch(function () {});
     } catch (e) {}
   }
-  function track(ev, data) { // evento personalizado del Pixel (nunca rompe nada)
-    try { if (typeof fbq === 'function') fbq('trackCustom', ev, data || {}); } catch (e) {}
+  function track(ev, data) { // evento personalizado del Pixel vigente (nunca rompe nada)
+    try { if (window.TJPX) window.TJPX.custom(ev, data || {}); } catch (e) {}
   }
 
   /* ===== nombre: limpieza y validación =====
@@ -305,15 +371,16 @@ footer p+p{margin-top:6px}
     setTimeout(fin, maxMs);
   }
 
-  try {
-    fetchJSON(API + '?action=getWhatsapp', 3500).then(function (d) {
-      if (d && d.success && WA_RE.test(String(d.numero))) {
-        S.numRemote = String(d.numero);
+  try { // el número viene de la config compartida (ver el primer <script> de la página)
+    if (!window.TJCFG) throw new Error('sin config');
+    window.TJCFG.ready(function (c) {
+      if (c && WA_RE.test(String(c.numero))) {
+        S.numRemote = String(c.numero);
         S.num = S.numRemote; S.numSrc = 'remoto';
         ls('set', WA_CACHE_KEY, JSON.stringify({ n: S.num, t: Date.now(), d: WA_DEFAULT }));
       }
       settleNum();
-    }).catch(function () { settleNum(); });
+    });
   } catch (e) { settleNum(); }
 
   /* ===== identidad y tracking ===== */
@@ -373,8 +440,8 @@ footer p+p{margin-top:6px}
     if (now - S.lastLead < 20000) return '';
     S.lastLead = now;
     var id = 'lead_' + code + '_' + now;
-    try {
-      if (typeof fbq === 'function') fbq('track', 'Lead', { content_name: code }, { eventID: id });
+    try { // al pixel VIGENTE únicamente (nunca a uno viejo que haya quedado inicializado)
+      if (window.TJPX) window.TJPX.track('Lead', { content_name: code }, { eventID: id });
     } catch (e) {}
     return id;
   }
@@ -538,39 +605,63 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 (function () {
-  /* El pixel vigente lo guarda el Apps Script (lo que pongas en la PWA). Se recuerda en el
-     navegador para arrancar al instante; FALLBACK solo se usa si nunca se pudo consultar.
-     No hace falta tocar este archivo para cambiar de pixel. */
+  /* El Pixel ID vigente es el que guardás en la PWA (Ajustes → Meta). Llega por la config
+     compartida (primer <script> de la página); NO hace falta tocar este archivo para cambiarlo.
+     Reglas:
+       - Se inicia UN solo pixel por visita. Se espera hasta 1,2 s a la config (2,5 s si el
+         navegador no tiene un pixel recordado) antes de arrancar con el recordado o, en última
+         instancia, con FALLBACK.
+       - Todos los eventos (PageView, Lead, FormStart) se mandan con trackSingle al pixel vigente.
+         Así, si un visitante llegó con el pixel viejo recordado, NO se duplican eventos en el viejo.
+       - FALLBACK es el último recurso (primera visita + Netlify y Apps Script caídos a la vez). */
   var FALLBACK = '28556437477360814', KEY = 'tj_px';
-  var API_PX = 'https://script.google.com/macros/s/AKfycbzp4-jFTeQiJrCr4Sdy2BYFP1fGU3H-OHTvmdVYowUtsr40Noi-jzYhIVFbtsyFRURy/exec';
   var valido = function (v) { return /^\d{10,20}$/.test(String(v || '')); };
-  var activo = null;
-  function iniciar(id) {
-    if (activo || !valido(id)) return;
-    activo = String(id);
-    try { fbq('init', activo); fbq('track', 'PageView'); } catch (e) {}
+  var px = window.TJPX = { id: null };
+  var iniciados = {};
+  var recordado = null;
+  try { recordado = localStorage.getItem(KEY); } catch (e) {}
+
+  function usar(id) { // deja activo este pixel (lo inicializa solo la primera vez)
+    if (!valido(id)) return false;
+    id = String(id);
+    try {
+      if (!iniciados[id]) { fbq('init', id); iniciados[id] = 1; }
+    } catch (e) { return false; }
+    px.id = id;
+    return true;
   }
-  var guardado = null;
-  try { guardado = localStorage.getItem(KEY); } catch (e) {}
-  if (valido(guardado)) iniciar(guardado);
-  else setTimeout(function () { iniciar(FALLBACK); }, 2500);   // primera visita y Apps Script lento
-  try {
-    var ctl = ('AbortController' in window) ? new AbortController() : null;
-    var t = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
-    fetch(API_PX + '?action=getPixel', ctl ? { signal: ctl.signal } : {})
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        clearTimeout(t);
-        if (!d || !d.success || !valido(d.pixelId)) return;
-        var nuevo = String(d.pixelId);
-        try { localStorage.setItem(KEY, nuevo); } catch (e) {}
-        if (!activo) iniciar(nuevo);
-        else if (activo !== nuevo) {                      // cambiaste el pixel y este visitante traía el viejo
-          try { fbq('init', nuevo); fbq('trackSingle', nuevo, 'PageView'); activo = nuevo; } catch (e) {}
-        }
-      })
-      .catch(function () {});
-  } catch (e) {}
+  function pageView() { try { fbq('trackSingle', px.id, 'PageView'); } catch (e) {} }
+  function decidir(id) { if (!px.id && usar(id)) pageView(); }
+
+  // Garantiza que haya un pixel activo (el recordado, o FALLBACK si no hay nada).
+  px.asegurar = function () {
+    if (!px.id) decidir(valido(recordado) ? recordado : FALLBACK);
+    return px.id;
+  };
+  px.track = function (ev, params, opts) {
+    try {
+      if (!px.asegurar() || typeof fbq !== 'function') return;
+      if (opts) fbq('trackSingle', px.id, ev, params || {}, opts);
+      else fbq('trackSingle', px.id, ev, params || {});
+    } catch (e) {}
+  };
+  px.custom = function (ev, params) { // eventos no críticos (FormStart): esperan al pixel vigente, no fuerzan la decisión
+    try {
+      if (typeof fbq !== 'function') return;
+      if (!px.id) { setTimeout(function () { px.custom(ev, params); }, 1300); return; }
+      fbq('trackSingleCustom', px.id, ev, params || {});
+    } catch (e) {}
+  };
+
+  setTimeout(px.asegurar, valido(recordado) ? 1200 : 2500);   // si la config no llegó a tiempo
+
+  if (window.TJCFG) window.TJCFG.ready(function (c) {
+    if (!c || !valido(c.pixelId)) return;
+    var nuevo = String(c.pixelId);
+    try { localStorage.setItem(KEY, nuevo); } catch (e) {}
+    if (!px.id) decidir(nuevo);                        // caso normal: la config llegó antes de arrancar
+    else if (px.id !== nuevo && usar(nuevo)) pageView();   // ya había arrancado con otro (recordado/respaldo): se pasa al vigente
+  });
 })();
 </script>
 <!-- End Meta Pixel Code -->
